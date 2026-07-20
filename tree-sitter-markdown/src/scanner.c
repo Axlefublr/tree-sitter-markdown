@@ -414,7 +414,7 @@ static bool parse_fenced_code_block(Scanner *s, const char delimiter,
     // Also it cannot be indented more than 3 spaces.
     if ((delimiter == '`' ? valid_symbols[FENCED_CODE_BLOCK_END_BACKTICK]
                           : valid_symbols[FENCED_CODE_BLOCK_END_TILDE]) &&
-        s->indentation < 4 && level >= s->fenced_code_block_delimiter_length) {
+        level >= s->fenced_code_block_delimiter_length) {
         while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
             advance(s, lexer);
         }
@@ -501,7 +501,7 @@ static bool parse_star(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
     // If there was a star and at least one space after that star then this
     // could be a list marker.
     bool list_marker_star = star_count >= 1 && extra_indentation >= 1;
-    if (valid_symbols[THEMATIC_BREAK] && thematic_break && s->indentation < 4) {
+    if (valid_symbols[THEMATIC_BREAK] && thematic_break) {
         // If a thematic break is valid then it takes precedence
         lexer->result_symbol = THEMATIC_BREAK;
         mark_end(s, lexer);
@@ -586,7 +586,7 @@ static bool parse_block_quote(Scanner *s, TSLexer *lexer,
 
 static bool parse_atx_heading(Scanner *s, TSLexer *lexer,
                               const bool *valid_symbols) {
-    if (valid_symbols[ATX_H1_MARKER] && s->indentation <= 3) {
+    if (valid_symbols[ATX_H1_MARKER]) {
         mark_end(s, lexer);
         uint16_t level = 0;
         while (lexer->lookahead == '#' && level <= 6) {
@@ -626,8 +626,7 @@ static bool parse_setext_underline(Scanner *s, TSLexer *lexer,
 }
 
 static bool parse_plus(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
-    if (s->indentation <= 3 &&
-        (valid_symbols[LIST_MARKER_PLUS] ||
+    if ((valid_symbols[LIST_MARKER_PLUS] ||
          valid_symbols[LIST_MARKER_PLUS_DONT_INTERRUPT] ||
          valid_symbols[PLUS_METADATA])) {
         advance(s, lexer);
@@ -729,8 +728,7 @@ static bool parse_plus(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
 
 static bool parse_ordered_list_marker(Scanner *s, TSLexer *lexer,
                                       const bool *valid_symbols) {
-    if (s->indentation <= 3 &&
-        (valid_symbols[LIST_MARKER_PARENTHESIS] ||
+    if ((valid_symbols[LIST_MARKER_PARENTHESIS] ||
          valid_symbols[LIST_MARKER_DOT] ||
          valid_symbols[LIST_MARKER_PARENTHESIS_DONT_INTERRUPT] ||
          valid_symbols[LIST_MARKER_DOT_DONT_INTERRUPT])) {
@@ -796,8 +794,7 @@ static bool parse_ordered_list_marker(Scanner *s, TSLexer *lexer,
 }
 
 static bool parse_minus(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
-    if (s->indentation <= 3 &&
-        (valid_symbols[LIST_MARKER_MINUS] ||
+    if ((valid_symbols[LIST_MARKER_MINUS] ||
          valid_symbols[LIST_MARKER_MINUS_DONT_INTERRUPT] ||
          valid_symbols[SETEXT_H2_UNDERLINE] || valid_symbols[THEMATIC_BREAK] ||
          valid_symbols[MINUS_METADATA])) {
@@ -1350,20 +1347,6 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
                 s->indentation += advance(s, lexer);
             } else {
                 break;
-            }
-        }
-        // We are not matching. This is where the parsing logic for most
-        // "normal" token is. Most importantly parsing logic for the start of
-        // new blocks.
-        if (valid_symbols[INDENTED_CHUNK_START] &&
-            !valid_symbols[NO_INDENTED_CHUNK]) {
-            if (s->indentation >= 4 && lexer->lookahead != '\n' &&
-                lexer->lookahead != '\r') {
-                lexer->result_symbol = INDENTED_CHUNK_START;
-                if (!s->simulate)
-                    push_block(s, INDENTED_CODE_BLOCK);
-                s->indentation -= 4;
-                return true;
             }
         }
         // Decide which tokens to consider based on the first non-whitespace
