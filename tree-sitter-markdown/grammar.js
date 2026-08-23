@@ -229,12 +229,7 @@ module.exports = grammar({
             seq($._newline, $._blank_line),
             true
         ),
-        _html_block_7: $ => build_html_block(
-            $,
-            $._html_block_7_start,
-            seq($._newline, $._blank_line),
-            false
-        ),
+        _html_block_7: $ => seq($._html_block_7_start, choice($._newline, $._eof)),
 
         // A link reference definition. We need to make sure that this is not mistaken for a
         // paragraph or indented chunk. The `$._no_indented_chunk` token is used to tell the

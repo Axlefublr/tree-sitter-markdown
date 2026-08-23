@@ -105,21 +105,6 @@ static uint8_t list_item_indentation(Block block) {
 static const char *const HTML_TAG_NAMES_RULE_1[NUM_HTML_TAG_NAMES_RULE_1] = {
     "pre", "script", "style"};
 
-#define NUM_HTML_TAG_NAMES_RULE_7 62
-
-static const char *const HTML_TAG_NAMES_RULE_7[NUM_HTML_TAG_NAMES_RULE_7] = {
-    "address",  "article",    "aside",  "base",     "basefont", "blockquote",
-    "body",     "caption",    "center", "col",      "colgroup", "dd",
-    "details",  "dialog",     "dir",    "div",      "dl",       "dt",
-    "fieldset", "figcaption", "figure", "footer",   "form",     "frame",
-    "frameset", "h1",         "h2",     "h3",       "h4",       "h5",
-    "h6",       "head",       "header", "hr",       "html",     "iframe",
-    "legend",   "li",         "link",   "main",     "menu",     "menuitem",
-    "nav",      "noframes",   "ol",     "optgroup", "option",   "p",
-    "param",    "section",    "source", "summary",  "table",    "tbody",
-    "td",       "tfoot",      "th",     "thead",    "title",    "tr",
-    "track",    "ul"};
-
 // For explanation of the tokens see grammar.js
 static const bool paragraph_interrupt_symbols[] = {
     false, // LINE_ENDING,
@@ -1046,18 +1031,13 @@ static bool parse_html_block(Scanner *s, TSLexer *lexer,
                 tag_closed = true;
             }
         }
-        if (next_symbol_valid || tag_closed) {
-            // try block 2 names
-            for (size_t i = 0; i < NUM_HTML_TAG_NAMES_RULE_7; i++) {
-                if (strcmp(name, HTML_TAG_NAMES_RULE_7[i]) == 0 &&
-                    valid_symbols[HTML_BLOCK_6_START]) {
-                    lexer->result_symbol = HTML_BLOCK_6_START;
-                    if (!s->simulate)
-                        push_block(s, ANONYMOUS);
-                    return true;
-                }
-            }
-        }
+        // Note: we no longer special-case CommonMark's ~62-name "block-level
+        // tag" list (HTML_BLOCK_6_START) here. Doing so meant a tag's block
+        // behavior silently depended on whether its name happened to collide
+        // with a real HTML element (e.g. "param", "title", "section"), which
+        // made highlighting inconsistent for non-HTML uses of this
+        // angle-bracket syntax. All tag names now fall through uniformly to
+        // the generic HTML_BLOCK_7_START handling below.
     }
 
     if (!valid_symbols[HTML_BLOCK_7_START]) {
@@ -1165,8 +1145,6 @@ static bool parse_html_block(Scanner *s, TSLexer *lexer,
     }
     if (lexer->lookahead == '\r' || lexer->lookahead == '\n') {
         lexer->result_symbol = HTML_BLOCK_7_START;
-        if (!s->simulate)
-            push_block(s, ANONYMOUS);
         return true;
     }
     return false;
