@@ -19,6 +19,12 @@ typedef enum {
     ATX_H4_MARKER,
     ATX_H5_MARKER,
     ATX_H6_MARKER,
+    BAR_H1_MARKER,
+    BAR_H2_MARKER,
+    BAR_H3_MARKER,
+    BAR_H4_MARKER,
+    BAR_H5_MARKER,
+    BAR_H6_MARKER,
     SETEXT_H1_UNDERLINE,
     SETEXT_H2_UNDERLINE,
     THEMATIC_BREAK,
@@ -119,6 +125,12 @@ static const bool paragraph_interrupt_symbols[] = {
     true,  // ATX_H4_MARKER,
     true,  // ATX_H5_MARKER,
     true,  // ATX_H6_MARKER,
+    true,  // BAR_H1_MARKER,
+    true,  // BAR_H2_MARKER,
+    true,  // BAR_H3_MARKER,
+    true,  // BAR_H4_MARKER,
+    true,  // BAR_H5_MARKER,
+    true,  // BAR_H6_MARKER,
     true,  // SETEXT_H1_UNDERLINE,
     true,  // SETEXT_H2_UNDERLINE,
     true,  // THEMATIC_BREAK,
@@ -582,6 +594,31 @@ static bool parse_atx_heading(Scanner *s, TSLexer *lexer,
             (lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
              lexer->lookahead == '\n' || lexer->lookahead == '\r')) {
             lexer->result_symbol = ATX_H1_MARKER + (level - 1);
+            s->indentation = 0;
+            mark_end(s, lexer);
+            return true;
+        }
+    }
+    return false;
+}
+
+// A "bar heading" is a title-less heading marked by a run of 1-6 U+2501
+// (BOX DRAWINGS HEAVY HORIZONTAL, "━") characters alone on a line, mirroring
+// atx headings ('#') but without requiring title text. Just like atx
+// headings, more than 6 in a row is not a valid marker.
+static bool parse_bar_heading(Scanner *s, TSLexer *lexer,
+                              const bool *valid_symbols) {
+    if (valid_symbols[BAR_H1_MARKER]) {
+        mark_end(s, lexer);
+        uint16_t level = 0;
+        while (lexer->lookahead == 0x2501 && level <= 6) {
+            advance(s, lexer);
+            level++;
+        }
+        if (level <= 6 &&
+            (lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
+             lexer->lookahead == '\n' || lexer->lookahead == '\r')) {
+            lexer->result_symbol = BAR_H1_MARKER + (level - 1);
             s->indentation = 0;
             mark_end(s, lexer);
             return true;
@@ -1359,6 +1396,9 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
             case '#':
                 // A '#' could mark a atx heading
                 return parse_atx_heading(s, lexer, valid_symbols);
+            case 0x2501:
+                // A '━' could mark a title-less bar heading
+                return parse_bar_heading(s, lexer, valid_symbols);
             case '=':
                 // A '=' could mark a setext underline
                 return parse_setext_underline(s, lexer, valid_symbols);

@@ -49,42 +49,42 @@ module.exports = grammar({
         ),
         section: $ => choice($._section1, $._section2, $._section3, $._section4, $._section5, $._section6),
         _section1: $ => prec.right(seq(
-            alias($._atx_heading1, $.atx_heading),
+            choice(alias($._atx_heading1, $.atx_heading), alias($._bar_heading1, $.bar_heading)),
             repeat(choice(
                 alias(choice($._section6, $._section5, $._section4, $._section3, $._section2), $.section),
                 $._block_not_section
             ))
         )),
         _section2: $ => prec.right(seq(
-            alias($._atx_heading2, $.atx_heading),
+            choice(alias($._atx_heading2, $.atx_heading), alias($._bar_heading2, $.bar_heading)),
             repeat(choice(
                 alias(choice($._section6, $._section5, $._section4, $._section3), $.section),
                 $._block_not_section
             ))
         )),
         _section3: $ => prec.right(seq(
-            alias($._atx_heading3, $.atx_heading),
+            choice(alias($._atx_heading3, $.atx_heading), alias($._bar_heading3, $.bar_heading)),
             repeat(choice(
                 alias(choice($._section6, $._section5, $._section4), $.section),
                 $._block_not_section
             ))
         )),
         _section4: $ => prec.right(seq(
-            alias($._atx_heading4, $.atx_heading),
+            choice(alias($._atx_heading4, $.atx_heading), alias($._bar_heading4, $.bar_heading)),
             repeat(choice(
                 alias(choice($._section6, $._section5), $.section),
                 $._block_not_section
             ))
         )),
         _section5: $ => prec.right(seq(
-            alias($._atx_heading5, $.atx_heading),
+            choice(alias($._atx_heading5, $.atx_heading), alias($._bar_heading5, $.bar_heading)),
             repeat(choice(
                 alias($._section6, $.section),
                 $._block_not_section
             ))
         )),
         _section6: $ => prec.right(seq(
-            alias($._atx_heading6, $.atx_heading),
+            choice(alias($._atx_heading6, $.atx_heading), alias($._bar_heading6, $.bar_heading)),
             repeat($._block_not_section)
         )),
 
@@ -133,6 +133,42 @@ module.exports = grammar({
         _atx_heading_content: $ => prec(1, seq(
             optional($._whitespace),
             field('heading_content', alias($._line, $.inline))
+        )),
+
+        // A "bar heading": a title-less heading marked by a run of 1-6 '━'
+        // (U+2501) characters alone on a line, exactly analogous to atx
+        // headings but without requiring title text. Trailing content is
+        // still permitted (reusing `_atx_heading_content`) for consistency
+        // with atx headings, it just isn't required.
+        _bar_heading1: $ => prec(1, seq(
+            $.bar_h1_marker,
+            optional($._atx_heading_content),
+            $._newline
+        )),
+        _bar_heading2: $ => prec(1, seq(
+            $.bar_h2_marker,
+            optional($._atx_heading_content),
+            $._newline
+        )),
+        _bar_heading3: $ => prec(1, seq(
+            $.bar_h3_marker,
+            optional($._atx_heading_content),
+            $._newline
+        )),
+        _bar_heading4: $ => prec(1, seq(
+            $.bar_h4_marker,
+            optional($._atx_heading_content),
+            $._newline
+        )),
+        _bar_heading5: $ => prec(1, seq(
+            $.bar_h5_marker,
+            optional($._atx_heading_content),
+            $._newline
+        )),
+        _bar_heading6: $ => prec(1, seq(
+            $.bar_h6_marker,
+            optional($._atx_heading_content),
+            $._newline
         )),
 
         // A setext heading. The underlines are currently handled by the external scanner but maybe
@@ -521,6 +557,12 @@ module.exports = grammar({
         $.atx_h4_marker,
         $.atx_h5_marker,
         $.atx_h6_marker,
+        $.bar_h1_marker, // bar headings do not need a `$._block_close`
+        $.bar_h2_marker,
+        $.bar_h3_marker,
+        $.bar_h4_marker,
+        $.bar_h5_marker,
+        $.bar_h6_marker,
         $.setext_h1_underline, // setext headings do not need a `$._block_close`
         $.setext_h2_underline,
         $._thematic_break, // thematic breaks do not need a `$._block_close`
