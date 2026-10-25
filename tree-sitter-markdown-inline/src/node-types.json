@@ -99,6 +99,10 @@
           "named": true
         },
         {
+          "type": "required_argument",
+          "named": true
+        },
+        {
           "type": "shortcut_link",
           "named": true
         },
@@ -234,6 +238,10 @@
           "named": true
         },
         {
+          "type": "required_argument",
+          "named": true
+        },
+        {
           "type": "shortcut_link",
           "named": true
         },
@@ -311,6 +319,10 @@
         },
         {
           "type": "numeric_character_reference",
+          "named": true
+        },
+        {
+          "type": "required_argument",
           "named": true
         },
         {
@@ -469,6 +481,10 @@
           "named": true
         },
         {
+          "type": "required_argument",
+          "named": true
+        },
+        {
           "type": "strikethrough",
           "named": true
         },
@@ -586,6 +602,10 @@
           "named": true
         },
         {
+          "type": "required_argument",
+          "named": true
+        },
+        {
           "type": "shortcut_link",
           "named": true
         },
@@ -666,6 +686,10 @@
         },
         {
           "type": "numeric_character_reference",
+          "named": true
+        },
+        {
+          "type": "required_argument",
           "named": true
         },
         {
@@ -845,6 +869,10 @@
   },
   {
     "type": "numeric_character_reference",
+    "named": true
+  },
+  {
+    "type": "required_argument",
     "named": true
   },
   {
