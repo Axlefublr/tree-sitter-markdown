@@ -71,6 +71,9 @@ module.exports = grammar(add_inline_rules({
     // More conflicts are defined in `add_inline_rules`
     conflicts: $ => [
 
+        // A valid HTML open tag wins over an angle-bracket argument.
+        [$._angle_argument, $._text_base],
+
         [$._closing_tag, $._text_base],
         [$._open_tag, $._text_base],
         [$._html_comment, $._text_base],
@@ -250,9 +253,23 @@ module.exports = grammar(add_inline_rules({
         //
         // https://github.github.com/gfm/#raw-html
         _html_tag: $ => choice($._open_tag, $._closing_tag, $._html_comment, $._processing_instruction, $._declaration, $._cdata_section),
+        // Markdown notes may use angle brackets for arguments (e.g. <string?>).
+        // Require punctuation immediately after a valid-looking tag name, so ordinary
+        // HTML tags such as <bool> cannot match this rule. Static precedence is needed
+        // to prefer the complete argument over the inline rule's repeated text tokens.
+        _angle_argument: $ => prec(2, seq(
+            '<',
+            $._tag_name,
+            common.punctuation_without($, ['<', '>', '/']),
+            repeat($._text_no_angle),
+            '>',
+        )),
         _open_tag: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq('<', $._tag_name, repeat($._attribute), repeat(choice($._whitespace, $._soft_line_break)), optional('/'), '>')),
         _closing_tag: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq('<', '/', $._tag_name, repeat(choice($._whitespace, $._soft_line_break)), '>')),
-        _tag_name: $ => seq($._word_no_digit, repeat(choice($._word_no_digit, $._digits, '-'))),
+        // Prefer a complete HTML tag name over a shorter prefix. Right associativity
+        // also makes a hyphen extend the name instead of competing with punctuation
+        // that follows the name in an angle-bracket argument.
+        _tag_name: $ => prec.right(1, seq($._word_no_digit, repeat(choice($._word_no_digit, $._digits, '-')))),
         _attribute: $ => seq(repeat1(choice($._whitespace, $._soft_line_break)), $._attribute_name, repeat(choice($._whitespace, $._soft_line_break)), '=', repeat(choice($._whitespace, $._soft_line_break)), $._attribute_value),
         _attribute_name: $ => /[a-zA-Z_:][a-zA-Z0-9_\.:\-]*/,
         _attribute_value: $ => choice(
@@ -358,6 +375,7 @@ module.exports = grammar(add_inline_rules({
             (common.EXTENSION_LATEX ? $.latex_block : choice()),
             $.code_span,
             alias($._html_tag, $.html_tag),
+            alias($._angle_argument, $.angle_argument),
             $._text_base,
             common.EXTENSION_TAGS ? $.tag : choice(),
             $._unclosed_span,
@@ -436,7 +454,7 @@ function add_inline_rules(grammar) {
                 conflicts.push(['_emphasis_star' + suffix_link, '_inline_element' + suffix_delimiter + suffix_link]);
                 conflicts.push(['_emphasis_star' + suffix_link, '_strong_emphasis_star' + suffix_link, '_inline_element' + suffix_delimiter + suffix_link]);
             }
-            if (delimiter == 'star' || delimiter == 'underscore') {
+            if (link && (delimiter == 'star' || delimiter == 'underscore')) {
                 conflicts.push(['_strong_emphasis_' + delimiter + suffix_link, '_inline_element_no_' + delimiter]);
             }
             if (delimiter !== "underscore") {

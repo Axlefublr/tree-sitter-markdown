@@ -1,5 +1,10 @@
 [
   {
+    "type": "angle_argument",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "backslash_escape",
     "named": true,
     "fields": {}
@@ -42,6 +47,10 @@
       "multiple": true,
       "required": true,
       "types": [
+        {
+          "type": "angle_argument",
+          "named": true
+        },
         {
           "type": "backslash_escape",
           "named": true
@@ -182,6 +191,10 @@
       "required": false,
       "types": [
         {
+          "type": "angle_argument",
+          "named": true
+        },
+        {
           "type": "backslash_escape",
           "named": true
         },
@@ -261,6 +274,10 @@
       "multiple": true,
       "required": false,
       "types": [
+        {
+          "type": "angle_argument",
+          "named": true
+        },
         {
           "type": "backslash_escape",
           "named": true
@@ -429,6 +446,10 @@
       "required": false,
       "types": [
         {
+          "type": "angle_argument",
+          "named": true
+        },
+        {
           "type": "backslash_escape",
           "named": true
         },
@@ -530,6 +551,10 @@
       "required": true,
       "types": [
         {
+          "type": "angle_argument",
+          "named": true
+        },
+        {
           "type": "backslash_escape",
           "named": true
         },
@@ -612,6 +637,10 @@
       "multiple": true,
       "required": true,
       "types": [
+        {
+          "type": "angle_argument",
+          "named": true
+        },
         {
           "type": "backslash_escape",
           "named": true
