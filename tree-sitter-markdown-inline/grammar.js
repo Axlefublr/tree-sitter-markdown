@@ -250,16 +250,35 @@ module.exports = grammar(add_inline_rules({
         //
         // https://github.github.com/gfm/#raw-html
         _html_tag: $ => choice($._open_tag, $._closing_tag, $._html_comment, $._processing_instruction, $._declaration, $._cdata_section),
-        _open_tag: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq('<', $._tag_name, repeat($._attribute), repeat(choice($._whitespace, $._soft_line_break)), optional('/'), '>')),
+        // Opening tags are intentionally loose, much like the text of a link (`[...]`): after the `<`
+        // comes anything but a `<` or `>`, so placeholders like `<arg_name?>` or `<some arg>` count.
+        // This replaces the spec's tag name + attributes grammar, so it no longer knows about e.g.
+        // a `>` inside a quoted attribute value.
+        // Exceptions:
+        // - the first character can't be whitespace or `/` (`< a >` and `</a>` stay as they were)
+        // - a backslash escapes the next character, so `\>` doesn't end the tag
+        // - angle bracket link destinations like `[a](<b c>)` win against this, see `link_destination`
+        _open_tag: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq('<', $._open_tag_first, repeat($._open_tag_content), '>')),
+        _open_tag_first: $ => choice(
+            $._word,
+            common.punctuation_without($, ['<', '>', '/', '\\', '`']),
+            // Right after a `<` the scanner already claims these as delimiters
+            $._emphasis_open_star,
+            $._emphasis_open_underscore,
+            $._strikethrough_open,
+            $._latex_span_start,
+            $._unclosed_span,
+        ),
+        _open_tag_content: $ => choice(
+            $._word,
+            $._open_tag_escape,
+            common.punctuation_without($, ['<', '>']),
+            $._whitespace,
+            $._soft_line_break,
+        ),
+        _open_tag_escape: $ => /\\[!-\/:-@\[-`{-~]/,
         _closing_tag: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq('<', '/', $._tag_name, repeat(choice($._whitespace, $._soft_line_break)), '>')),
         _tag_name: $ => seq($._word_no_digit, repeat(choice($._word_no_digit, $._digits, '-'))),
-        _attribute: $ => seq(repeat1(choice($._whitespace, $._soft_line_break)), $._attribute_name, repeat(choice($._whitespace, $._soft_line_break)), '=', repeat(choice($._whitespace, $._soft_line_break)), $._attribute_value),
-        _attribute_name: $ => /[a-zA-Z_:][a-zA-Z0-9_\.:\-]*/,
-        _attribute_value: $ => choice(
-            /[^ \t\r\n"'=<>`]+/,
-            seq("'", repeat(choice($._word, $._whitespace, $._soft_line_break, common.punctuation_without($, ["'"]))), "'"),
-            seq('"', repeat(choice($._word, $._whitespace, $._soft_line_break, common.punctuation_without($, ['"']))), '"'),
-        ),
         _html_comment: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq(
             '<!--',
             optional(seq(
