@@ -70,13 +70,7 @@ module.exports = grammar(add_inline_rules({
     ],
     // More conflicts are defined in `add_inline_rules`
     conflicts: $ => [
-
-        [$._closing_tag, $._text_base],
-        [$._open_tag, $._text_base],
-        [$._html_comment, $._text_base],
-        [$._processing_instruction, $._text_base],
-        [$._declaration, $._text_base],
-        [$._cdata_section, $._text_base],
+        [$.required_argument, $._text_base],
 
         [$._link_text_non_empty, $._inline_element],
         [$._link_text_non_empty, $._inline_element_no_star],
@@ -121,13 +115,13 @@ module.exports = grammar(add_inline_rules({
 
         code_span: $ => seq(
             alias($._code_span_start, $.code_span_delimiter),
-            repeat(choice($._text_base, '[', ']', $._soft_line_break, $._html_tag)),
+            repeat(choice($._text_base, '[', ']', $._soft_line_break, $.required_argument)),
             alias($._code_span_close, $.code_span_delimiter)
         ),
 
         latex_block: $ => seq(
             alias($._latex_span_start, $.latex_span_delimiter),
-            repeat(choice($._text_base, '[', ']', $._soft_line_break, $._html_tag, $.backslash_escape)),
+            repeat(choice($._text_base, '[', ']', $._soft_line_break, $.required_argument, $.backslash_escape)),
             alias($._latex_span_close, $.latex_span_delimiter),
         ),
 
@@ -187,6 +181,27 @@ module.exports = grammar(add_inline_rules({
             )
         ),
 
+        required_argument: $ => prec.dynamic(2 * PRECEDENCE_LEVEL_HTML, seq(
+            '<',
+            optional('/'),
+            alias(
+                seq(
+                    choice(
+                        $._word,
+                        common.punctuation_without($, ['<', '>', ' ', '/'])
+                    ),
+                    repeat(choice(
+                        $._word,
+                        common.punctuation_without($, ['<', '>']),
+                        $._whitespace,
+                        $._soft_line_break
+                    ))
+                ),
+                $.required_argument
+            ),
+            '>'
+        )),
+
         _wiki_link_destination: $ => repeat1(choice(
             $._word,
             common.punctuation_without($, ['[',']', '|']),
@@ -245,87 +260,6 @@ module.exports = grammar(add_inline_rules({
         email_autolink: $ =>
             /<[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*>/,
 
-        // Raw html. As with html blocks we do not emit additional information as this is best done
-        // by a proper html tree-sitter grammar.
-        //
-        // https://github.github.com/gfm/#raw-html
-        _html_tag: $ => choice($._open_tag, $._closing_tag, $._html_comment, $._processing_instruction, $._declaration, $._cdata_section),
-        _open_tag: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq('<', $._tag_name, repeat($._attribute), repeat(choice($._whitespace, $._soft_line_break)), optional('/'), '>')),
-        _closing_tag: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq('<', '/', $._tag_name, repeat(choice($._whitespace, $._soft_line_break)), '>')),
-        _tag_name: $ => seq($._word_no_digit, repeat(choice($._word_no_digit, $._digits, '-'))),
-        _attribute: $ => seq(repeat1(choice($._whitespace, $._soft_line_break)), $._attribute_name, repeat(choice($._whitespace, $._soft_line_break)), '=', repeat(choice($._whitespace, $._soft_line_break)), $._attribute_value),
-        _attribute_name: $ => /[a-zA-Z_:][a-zA-Z0-9_\.:\-]*/,
-        _attribute_value: $ => choice(
-            /[^ \t\r\n"'=<>`]+/,
-            seq("'", repeat(choice($._word, $._whitespace, $._soft_line_break, common.punctuation_without($, ["'"]))), "'"),
-            seq('"', repeat(choice($._word, $._whitespace, $._soft_line_break, common.punctuation_without($, ['"']))), '"'),
-        ),
-        _html_comment: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq(
-            '<!--',
-            optional(seq(
-                choice(
-                    $._word,
-                    $._whitespace,
-                    $._soft_line_break,
-                    common.punctuation_without($, ['-', '>']),
-                    seq(
-                        '-',
-                        common.punctuation_without($, ['>']),
-                    )
-                ),
-                repeat(prec.right(choice(
-                    $._word,
-                    $._whitespace,
-                    $._soft_line_break,
-                    common.punctuation_without($, ['-']),
-                    seq(
-                        '-',
-                        choice(
-                            $._word,
-                            $._whitespace,
-                            $._soft_line_break,
-                            common.punctuation_without($, ['-']),
-                        )
-                    )
-                ))),
-            )),
-            '-->'
-        )),
-        _processing_instruction: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq(
-            '<?',
-            repeat(prec.right(choice(
-                $._word,
-                $._whitespace,
-                $._soft_line_break,
-                common.punctuation_without($, []),
-            ))),
-            '?>'
-        )),
-        _declaration: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq(
-            /<![A-Z]+/,
-            choice(
-                $._whitespace,
-                $._soft_line_break,
-            ),
-            repeat(prec.right(choice(
-                $._word,
-                $._whitespace,
-                $._soft_line_break,
-                common.punctuation_without($, ['>']),
-            ))),
-            '>'
-        )),
-        _cdata_section: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq(
-            '<![CDATA[',
-            repeat(prec.right(choice(
-                $._word,
-                $._whitespace,
-                $._soft_line_break,
-                common.punctuation_without($, []),
-            ))),
-            ']]>'
-        )),
-
         // A hard line break.
         //
         // https://github.github.com/gfm/#hard-line-breaks
@@ -357,7 +291,7 @@ module.exports = grammar(add_inline_rules({
             $.numeric_character_reference,
             (common.EXTENSION_LATEX ? $.latex_block : choice()),
             $.code_span,
-            alias($._html_tag, $.html_tag),
+            $.required_argument,
             $._text_base,
             common.EXTENSION_TAGS ? $.tag : choice(),
             $._unclosed_span,
@@ -366,10 +300,6 @@ module.exports = grammar(add_inline_rules({
             $._word,
             common.punctuation_without($, ['[', ']']),
             $._whitespace,
-            '<!--',
-            /<![A-Z]+/,
-            '<?',
-            '<![CDATA[',
         ),
         _text_inline_no_link: $ => choice(
             $._text_base,

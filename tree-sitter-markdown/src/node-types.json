@@ -129,10 +129,6 @@
           "named": true
         },
         {
-          "type": "html_block",
-          "named": true
-        },
-        {
           "type": "indented_code_block",
           "named": true
         },
@@ -150,6 +146,10 @@
         },
         {
           "type": "pipe_table",
+          "named": true
+        },
+        {
+          "type": "required_argument",
           "named": true
         },
         {
@@ -228,21 +228,6 @@
         },
         {
           "type": "info_string",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "html_block",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": false,
-      "types": [
-        {
-          "type": "block_continuation",
           "named": true
         }
       ]
@@ -468,10 +453,6 @@
           "named": true
         },
         {
-          "type": "html_block",
-          "named": true
-        },
-        {
           "type": "indented_code_block",
           "named": true
         },
@@ -509,6 +490,10 @@
         },
         {
           "type": "pipe_table",
+          "named": true
+        },
+        {
+          "type": "required_argument",
           "named": true
         },
         {
@@ -675,6 +660,25 @@
     }
   },
   {
+    "type": "required_argument",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "block_continuation",
+          "named": true
+        },
+        {
+          "type": "required_argument",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "section",
     "named": true,
     "fields": {},
@@ -703,10 +707,6 @@
           "named": true
         },
         {
-          "type": "html_block",
-          "named": true
-        },
-        {
           "type": "indented_code_block",
           "named": true
         },
@@ -724,6 +724,10 @@
         },
         {
           "type": "pipe_table",
+          "named": true
+        },
+        {
+          "type": "required_argument",
           "named": true
         },
         {
@@ -853,10 +857,6 @@
     "named": false
   },
   {
-    "type": "-->",
-    "named": false
-  },
-  {
     "type": ".",
     "named": false
   },
@@ -889,10 +889,6 @@
     "named": false
   },
   {
-    "type": "?>",
-    "named": false
-  },
-  {
     "type": "@",
     "named": false
   },
@@ -906,10 +902,6 @@
   },
   {
     "type": "]",
-    "named": false
-  },
-  {
-    "type": "]]>",
     "named": false
   },
   {

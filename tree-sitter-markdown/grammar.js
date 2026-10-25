@@ -43,7 +43,7 @@ module.exports = grammar({
             $.list,
             $.fenced_code_block,
             $._blank_line,
-            $.html_block,
+            $.required_argument,
             $.link_reference_definition,
             common.EXTENSION_PIPE_TABLE ? $.pipe_table : choice(),
         ),
@@ -231,41 +231,28 @@ module.exports = grammar({
         ),
         language: $ => prec.right(repeat1(choice($._word, common.punctuation_without($, ['{', '}', ',']), $.backslash_escape, $.entity_reference, $.numeric_character_reference))),
 
-        // An HTML block. We do not emit addition nodes relating to the kind or structure or of the
-        // html block as this is best done using language injections and a proper html parsers.
-        //
-        // See the `build_html_block` function for more information.
-        // See the spec for the different kinds of html blocks.
-        //
-        // https://github.github.com/gfm/#html-blocks
-        html_block: $ => prec(1, seq(optional($._whitespace), choice(
-            $._html_block_1,
-            $._html_block_2,
-            $._html_block_3,
-            $._html_block_4,
-            $._html_block_5,
-            $._html_block_6,
-            $._html_block_7,
-        ))),
-        _html_block_1: $ => build_html_block($,
-            // new RegExp(
-            //     '[ \t]*<' + regex_case_insensitive_list(HTML_TAG_NAMES_RULE_1) + '([\\r\\n]|[ \\t>][^<\\r\\n]*(\\n|\\r\\n?)?)'
-            // ),
-            $._html_block_1_start,
-            $._html_block_1_end,
-            true
-        ),
-        _html_block_2: $ => build_html_block($, $._html_block_2_start, '-->', true),
-        _html_block_3: $ => build_html_block($, $._html_block_3_start, '?>', true),
-        _html_block_4: $ => build_html_block($, $._html_block_4_start, '>', true),
-        _html_block_5: $ => build_html_block($, $._html_block_5_start, ']]>', true),
-        _html_block_6: $ => build_html_block(
-            $,
-            $._html_block_6_start,
-            seq($._newline, $._blank_line),
-            true
-        ),
-        _html_block_7: $ => seq($._html_block_7_start, choice($._newline, $._eof)),
+        required_argument: $ => prec(1, seq(
+            optional($._whitespace),
+            '<',
+            optional('/'),
+            alias(
+                seq(
+                    choice(
+                        $._word,
+                        common.punctuation_without($, ['<', '>', ' ', '/'])
+                    ),
+                    repeat(choice(
+                        $._word,
+                        common.punctuation_without($, ['<', '>']),
+                        $._whitespace,
+                        $._newline
+                    ))
+                ),
+                $.required_argument
+            ),
+            '>',
+            choice($._newline, $._eof)
+        )),
 
         // A link reference definition. We need to make sure that this is not mistaken for a
         // paragraph or indented chunk. The `$._no_indented_chunk` token is used to tell the
@@ -587,15 +574,6 @@ module.exports = grammar({
         $._fenced_code_block_end_backtick,
         $._fenced_code_block_end_tilde,
 
-        $._html_block_1_start,
-        $._html_block_1_end,
-        $._html_block_2_start,
-        $._html_block_3_start,
-        $._html_block_4_start,
-        $._html_block_5_start,
-        $._html_block_6_start,
-        $._html_block_7_start,
-
         // Similarly this is used if the closing of a block is not decided by the external parser.
         // A `$._block_close` will be emitted at the beginning of the next line. Notice that a
         // `$._block_close` can also get emitted if the parent block closes.
@@ -630,19 +608,3 @@ module.exports = grammar({
     ],
     extras: $ => [],
 });
-
-// General purpose structure for html blocks. The different kinds mostly work the same but have
-// different openling and closing conditions. Some html blocks may not interrupt a paragraph and
-// have to be marked as such.
-function build_html_block($, open, close, interrupt_paragraph) {
-    return seq(
-        open,
-        repeat(choice(
-            $._line,
-            $._newline,
-            seq(close, $._close_block),
-        )),
-        $._block_close,
-        optional($.block_continuation),
-    );
-}
