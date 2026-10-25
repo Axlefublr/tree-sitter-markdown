@@ -61,9 +61,9 @@ module.exports = grammar(add_inline_rules({
         $._unclosed_span
     ],
     precedences: $ => [
-        // [$._strong_emphasis_star, $._inline_element_no_star],
+        [$._strong_emphasis_star, $._inline_element_no_star],
         [$._strong_emphasis_star_no_link, $._inline_element_no_star_no_link],
-        // [$._strong_emphasis_underscore, $._inline_element_no_underscore],
+        [$._strong_emphasis_underscore, $._inline_element_no_underscore],
         [$._strong_emphasis_underscore_no_link, $._inline_element_no_underscore_no_link],
         [$.hard_line_break, $._whitespace],
         [$.hard_line_break, $._text_base],
@@ -78,6 +78,11 @@ module.exports = grammar(add_inline_rules({
         [$._declaration, $._text_base],
         [$._cdata_section, $._text_base],
 
+        [$._tag_name, $._word],
+
+        [$.required_argument, $._text_base],
+        [$.required_argument, $._open_tag, $._text_base],
+
         [$._link_text_non_empty, $._inline_element],
         [$._link_text_non_empty, $._inline_element_no_star],
         [$._link_text_non_empty, $._inline_element_no_underscore],
@@ -88,9 +93,6 @@ module.exports = grammar(add_inline_rules({
         [$._link_text, $._inline_element_no_tilde],
 
         [$._image_description, $._image_description_non_empty, $._text_base],
-        // [$._image_description, $._image_description_non_empty, $._text_inline],
-        // [$._image_description, $._image_description_non_empty, $._text_inline_no_star],
-        // [$._image_description, $._image_description_non_empty, $._text_inline_no_underscore],
 
         [$._image_shortcut_link, $._image_description],
         [$.shortcut_link, $._link_text],
@@ -186,6 +188,26 @@ module.exports = grammar(add_inline_rules({
             ']', ']'
             )
         ),
+
+        required_argument: $ => prec.dynamic(2 * PRECEDENCE_LEVEL_HTML, seq(
+            '<',
+            alias(
+                seq(
+                    choice(
+                        $._word,
+                        common.punctuation_without($, ['<', '>', ' ', '/'])
+                    ),
+                    repeat(choice(
+                        $._word,
+                        common.punctuation_without($, ['<', '>']),
+                        $._whitespace,
+                        $._soft_line_break
+                    ))
+                ),
+                $.required_argument
+            ),
+            '>'
+        )),
 
         _wiki_link_destination: $ => repeat1(choice(
             $._word,
@@ -358,6 +380,7 @@ module.exports = grammar(add_inline_rules({
             (common.EXTENSION_LATEX ? $.latex_block : choice()),
             $.code_span,
             alias($._html_tag, $.html_tag),
+            $.required_argument,
             $._text_base,
             common.EXTENSION_TAGS ? $.tag : choice(),
             $._unclosed_span,
@@ -435,9 +458,6 @@ function add_inline_rules(grammar) {
             if (delimiter !== "star") {
                 conflicts.push(['_emphasis_star' + suffix_link, '_inline_element' + suffix_delimiter + suffix_link]);
                 conflicts.push(['_emphasis_star' + suffix_link, '_strong_emphasis_star' + suffix_link, '_inline_element' + suffix_delimiter + suffix_link]);
-            }
-            if (delimiter == 'star' || delimiter == 'underscore') {
-                conflicts.push(['_strong_emphasis_' + delimiter + suffix_link, '_inline_element_no_' + delimiter]);
             }
             if (delimiter !== "underscore") {
                 conflicts.push(['_emphasis_underscore' + suffix_link, '_inline_element' + suffix_delimiter + suffix_link]);
