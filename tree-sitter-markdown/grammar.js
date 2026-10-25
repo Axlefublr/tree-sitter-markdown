@@ -234,38 +234,17 @@ module.exports = grammar({
         // An HTML block. We do not emit addition nodes relating to the kind or structure or of the
         // html block as this is best done using language injections and a proper html parsers.
         //
+        // Only html comments (kind 2) are kept. The other kinds are deliberately not used in any
+        // rule, so the external scanner never emits their start tokens (they stay declared in
+        // `externals`, so the token order keeps matching `scanner.c`). Without them a line like
+        // `<arg>` is a regular paragraph, and the inline grammar parses it as a `required_argument`.
+        //
         // See the `build_html_block` function for more information.
         // See the spec for the different kinds of html blocks.
         //
         // https://github.github.com/gfm/#html-blocks
-        html_block: $ => prec(1, seq(optional($._whitespace), choice(
-            $._html_block_1,
-            $._html_block_2,
-            $._html_block_3,
-            $._html_block_4,
-            $._html_block_5,
-            $._html_block_6,
-            $._html_block_7,
-        ))),
-        _html_block_1: $ => build_html_block($,
-            // new RegExp(
-            //     '[ \t]*<' + regex_case_insensitive_list(HTML_TAG_NAMES_RULE_1) + '([\\r\\n]|[ \\t>][^<\\r\\n]*(\\n|\\r\\n?)?)'
-            // ),
-            $._html_block_1_start,
-            $._html_block_1_end,
-            true
-        ),
+        html_block: $ => prec(1, seq(optional($._whitespace), $._html_block_2)),
         _html_block_2: $ => build_html_block($, $._html_block_2_start, '-->', true),
-        _html_block_3: $ => build_html_block($, $._html_block_3_start, '?>', true),
-        _html_block_4: $ => build_html_block($, $._html_block_4_start, '>', true),
-        _html_block_5: $ => build_html_block($, $._html_block_5_start, ']]>', true),
-        _html_block_6: $ => build_html_block(
-            $,
-            $._html_block_6_start,
-            seq($._newline, $._blank_line),
-            true
-        ),
-        _html_block_7: $ => seq($._html_block_7_start, choice($._newline, $._eof)),
 
         // A link reference definition. We need to make sure that this is not mistaken for a
         // paragraph or indented chunk. The `$._no_indented_chunk` token is used to tell the
