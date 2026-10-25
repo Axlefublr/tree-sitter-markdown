@@ -2432,6 +2432,17 @@
         }
       ]
     },
+    "required_argument": {
+      "type": "TOKEN",
+      "content": {
+        "type": "PREC",
+        "value": 1,
+        "content": {
+          "type": "PATTERN",
+          "value": "<[^ \\t\\r\\n<>][^<>]*>"
+        }
+      }
+    },
     "_open_tag": {
       "type": "PREC_DYNAMIC",
       "value": 100,
@@ -4531,6 +4542,10 @@
         "content": {
           "type": "CHOICE",
           "members": [
+            {
+              "type": "SYMBOL",
+              "name": "required_argument"
+            },
             {
               "type": "SYMBOL",
               "name": "image"

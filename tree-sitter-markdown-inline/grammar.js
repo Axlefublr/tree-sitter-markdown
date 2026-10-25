@@ -250,6 +250,10 @@ module.exports = grammar(add_inline_rules({
         //
         // https://github.github.com/gfm/#raw-html
         _html_tag: $ => choice($._open_tag, $._closing_tag, $._html_comment, $._processing_instruction, $._declaration, $._cdata_section),
+        // In this notes syntax, any angle-bracketed text whose first character
+        // is not whitespace is a required argument, even when it resembles HTML.
+        // Lexical precedence makes the complete span win over HTML/tag/autolink tokens.
+        required_argument: $ => token(prec(1, /<[^ \t\r\n<>][^<>]*>/)),
         _open_tag: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq('<', $._tag_name, repeat($._attribute), repeat(choice($._whitespace, $._soft_line_break)), optional('/'), '>')),
         _closing_tag: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq('<', '/', $._tag_name, repeat(choice($._whitespace, $._soft_line_break)), '>')),
         _tag_name: $ => seq($._word_no_digit, repeat(choice($._word_no_digit, $._digits, '-'))),
@@ -347,6 +351,7 @@ module.exports = grammar(add_inline_rules({
         _soft_line_break: $ => seq($._newline_token, optional($._last_token_whitespace)),
 
         _inline_base: $ => prec.right(repeat1(choice(
+            $.required_argument,
             $.image,
             $._soft_line_break,
             $.backslash_escape,
