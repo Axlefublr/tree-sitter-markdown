@@ -55,10 +55,6 @@
           "named": true
         },
         {
-          "type": "email_autolink",
-          "named": true
-        },
-        {
           "type": "emphasis",
           "named": true
         },
@@ -96,6 +92,10 @@
         },
         {
           "type": "numeric_character_reference",
+          "named": true
+        },
+        {
+          "type": "required_argument",
           "named": true
         },
         {
@@ -194,10 +194,6 @@
           "named": true
         },
         {
-          "type": "email_autolink",
-          "named": true
-        },
-        {
           "type": "emphasis",
           "named": true
         },
@@ -231,6 +227,10 @@
         },
         {
           "type": "numeric_character_reference",
+          "named": true
+        },
+        {
+          "type": "required_argument",
           "named": true
         },
         {
@@ -274,10 +274,6 @@
           "named": true
         },
         {
-          "type": "email_autolink",
-          "named": true
-        },
-        {
           "type": "emphasis",
           "named": true
         },
@@ -311,6 +307,10 @@
         },
         {
           "type": "numeric_character_reference",
+          "named": true
+        },
+        {
+          "type": "required_argument",
           "named": true
         },
         {
@@ -437,10 +437,6 @@
           "named": true
         },
         {
-          "type": "email_autolink",
-          "named": true
-        },
-        {
           "type": "emphasis",
           "named": true
         },
@@ -466,6 +462,10 @@
         },
         {
           "type": "numeric_character_reference",
+          "named": true
+        },
+        {
+          "type": "required_argument",
           "named": true
         },
         {
@@ -507,6 +507,11 @@
     }
   },
   {
+    "type": "required_argument",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "shortcut_link",
     "named": true,
     "fields": {},
@@ -539,10 +544,6 @@
         },
         {
           "type": "collapsed_reference_link",
-          "named": true
-        },
-        {
-          "type": "email_autolink",
           "named": true
         },
         {
@@ -583,6 +584,10 @@
         },
         {
           "type": "numeric_character_reference",
+          "named": true
+        },
+        {
+          "type": "required_argument",
           "named": true
         },
         {
@@ -625,10 +630,6 @@
           "named": true
         },
         {
-          "type": "email_autolink",
-          "named": true
-        },
-        {
           "type": "emphasis",
           "named": true
         },
@@ -666,6 +667,10 @@
         },
         {
           "type": "numeric_character_reference",
+          "named": true
+        },
+        {
+          "type": "required_argument",
           "named": true
         },
         {
@@ -768,14 +773,6 @@
     "named": false
   },
   {
-    "type": "<![CDATA[",
-    "named": false
-  },
-  {
-    "type": "<?",
-    "named": false
-  },
-  {
     "type": "=",
     "named": false
   },
@@ -785,10 +782,6 @@
   },
   {
     "type": "?",
-    "named": false
-  },
-  {
-    "type": "?>",
     "named": false
   },
   {
@@ -808,10 +801,6 @@
     "named": false
   },
   {
-    "type": "]]>",
-    "named": false
-  },
-  {
     "type": "^",
     "named": false
   },
@@ -825,10 +814,6 @@
   },
   {
     "type": "code_span_delimiter",
-    "named": true
-  },
-  {
-    "type": "email_autolink",
     "named": true
   },
   {

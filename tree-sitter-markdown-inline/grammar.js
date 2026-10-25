@@ -12,6 +12,11 @@ const common = require('../common/common');
 const PRECEDENCE_LEVEL_EMPHASIS = 1;
 const PRECEDENCE_LEVEL_LINK = 10;
 const PRECEDENCE_LEVEL_HTML = 100;
+// Dynamic precedence of `required_argument`. It has to beat a shortcut link (PRECEDENCE_LEVEL_LINK)
+// inside of it, so that `<a [b]>` is an argument. But `[t](<dest>)` has to stay an `inline_link`,
+// which scores 3 * PRECEDENCE_LEVEL_LINK against a shortcut link plus this, so it has to stay below
+// 2 * PRECEDENCE_LEVEL_LINK.
+const PRECEDENCE_LEVEL_REQUIRED_ARGUMENT = 15;
 
 // Punctuation characters as specified in
 // https://github.github.com/gfm/#ascii-punctuation-character
@@ -71,12 +76,8 @@ module.exports = grammar(add_inline_rules({
     // More conflicts are defined in `add_inline_rules`
     conflicts: $ => [
 
-        [$._closing_tag, $._text_base],
-        [$._open_tag, $._text_base],
+        [$._required_argument, $._text_base],
         [$._html_comment, $._text_base],
-        [$._processing_instruction, $._text_base],
-        [$._declaration, $._text_base],
-        [$._cdata_section, $._text_base],
 
         [$._link_text_non_empty, $._inline_element],
         [$._link_text_non_empty, $._inline_element_no_star],
@@ -237,29 +238,55 @@ module.exports = grammar(add_inline_rules({
         // align with the spec. This is because the binary for the grammar gets to large if done
         // otherwise as tree-sitters code generation is not very concise for this type of regex.
         //
-        // Email autolinks do not match every valid email (emails normally should not be parsed
-        // using regexes), but this is how they are defined in the spec.
+        // Unlike in the spec, a uri autolink requires `://` after the scheme, and email autolinks
+        // don't exist: `<key:value>` and `<user@host>` are required arguments instead.
         //
         // https://github.github.com/gfm/#autolinks
-        uri_autolink: $ => /<[a-zA-Z][a-zA-Z0-9+\.\-][a-zA-Z0-9+\.\-]*:[^ \t\r\n<>]*>/,
-        email_autolink: $ =>
-            /<[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*>/,
+        uri_autolink: $ => /<[a-zA-Z][a-zA-Z0-9+\.\-][a-zA-Z0-9+\.\-]*:\/\/[^ \t\r\n<>]*>/,
 
-        // Raw html. As with html blocks we do not emit additional information as this is best done
-        // by a proper html tree-sitter grammar.
+        // Required arguments: `<arg>`. These take the place of raw html, so what is inside of the
+        // angle brackets can be pretty much anything. The content is raw, like in a code span: no
+        // other inline syntax is parsed inside of it. It can't start with whitespace (so `x < y`
+        // stays text) but can contain whitespace after that. It ends at the first `>` and can't
+        // contain a `<` or a newline. The angle brackets are anonymous nodes: they are not part of
+        // `required_argument`.
+        //
+        // This is ambiguous with plain text at the `<`, hence the conflict with `$._text_base`.
+        _required_argument: $ => prec.dynamic(PRECEDENCE_LEVEL_REQUIRED_ARGUMENT, seq(
+            '<',
+            alias($._required_argument_content, $.required_argument),
+            '>'
+        )),
+        _required_argument_content: $ => seq(
+            $._required_argument_start,
+            repeat(choice(
+                $._word,
+                $._whitespace,
+                common.punctuation_without($, ['<', '>']),
+            )),
+        ),
+        // The first token of the content. Right after the `<` the external scanner is asked for
+        // everything that is valid for plain text too, so for a `*`, `_`, `~`, backtick or `$` it
+        // may emit an opening delimiter instead of a plain punctuation character. Those have to be
+        // accepted here as content, otherwise an argument starting with one of them would not be
+        // an argument. (Inside the content the scanner is not asked for them anymore.)
+        _required_argument_start: $ => choice(
+            $._word,
+            common.punctuation_without($, ['<', '>']),
+            $._emphasis_open_star,
+            $._emphasis_open_underscore,
+            $._strikethrough_open,
+            $._code_span_start,
+            $._latex_span_start,
+            $._unclosed_span,
+        ),
+
+        // Raw html. Only html comments are supported, everything else in angle brackets is a
+        // required argument (see above). As with html blocks we do not emit additional information
+        // as this is best done by a proper html tree-sitter grammar.
         //
         // https://github.github.com/gfm/#raw-html
-        _html_tag: $ => choice($._open_tag, $._closing_tag, $._html_comment, $._processing_instruction, $._declaration, $._cdata_section),
-        _open_tag: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq('<', $._tag_name, repeat($._attribute), repeat(choice($._whitespace, $._soft_line_break)), optional('/'), '>')),
-        _closing_tag: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq('<', '/', $._tag_name, repeat(choice($._whitespace, $._soft_line_break)), '>')),
-        _tag_name: $ => seq($._word_no_digit, repeat(choice($._word_no_digit, $._digits, '-'))),
-        _attribute: $ => seq(repeat1(choice($._whitespace, $._soft_line_break)), $._attribute_name, repeat(choice($._whitespace, $._soft_line_break)), '=', repeat(choice($._whitespace, $._soft_line_break)), $._attribute_value),
-        _attribute_name: $ => /[a-zA-Z_:][a-zA-Z0-9_\.:\-]*/,
-        _attribute_value: $ => choice(
-            /[^ \t\r\n"'=<>`]+/,
-            seq("'", repeat(choice($._word, $._whitespace, $._soft_line_break, common.punctuation_without($, ["'"]))), "'"),
-            seq('"', repeat(choice($._word, $._whitespace, $._soft_line_break, common.punctuation_without($, ['"']))), '"'),
-        ),
+        _html_tag: $ => $._html_comment,
         _html_comment: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq(
             '<!--',
             optional(seq(
@@ -291,40 +318,6 @@ module.exports = grammar(add_inline_rules({
             )),
             '-->'
         )),
-        _processing_instruction: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq(
-            '<?',
-            repeat(prec.right(choice(
-                $._word,
-                $._whitespace,
-                $._soft_line_break,
-                common.punctuation_without($, []),
-            ))),
-            '?>'
-        )),
-        _declaration: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq(
-            /<![A-Z]+/,
-            choice(
-                $._whitespace,
-                $._soft_line_break,
-            ),
-            repeat(prec.right(choice(
-                $._word,
-                $._whitespace,
-                $._soft_line_break,
-                common.punctuation_without($, ['>']),
-            ))),
-            '>'
-        )),
-        _cdata_section: $ => prec.dynamic(PRECEDENCE_LEVEL_HTML, seq(
-            '<![CDATA[',
-            repeat(prec.right(choice(
-                $._word,
-                $._whitespace,
-                $._soft_line_break,
-                common.punctuation_without($, []),
-            ))),
-            ']]>'
-        )),
 
         // A hard line break.
         //
@@ -352,12 +345,12 @@ module.exports = grammar(add_inline_rules({
             $.backslash_escape,
             $.hard_line_break,
             $.uri_autolink,
-            $.email_autolink,
             $.entity_reference,
             $.numeric_character_reference,
             (common.EXTENSION_LATEX ? $.latex_block : choice()),
             $.code_span,
             alias($._html_tag, $.html_tag),
+            $._required_argument,
             $._text_base,
             common.EXTENSION_TAGS ? $.tag : choice(),
             $._unclosed_span,
@@ -367,9 +360,6 @@ module.exports = grammar(add_inline_rules({
             common.punctuation_without($, ['[', ']']),
             $._whitespace,
             '<!--',
-            /<![A-Z]+/,
-            '<?',
-            '<![CDATA[',
         ),
         _text_inline_no_link: $ => choice(
             $._text_base,
@@ -436,7 +426,8 @@ function add_inline_rules(grammar) {
                 conflicts.push(['_emphasis_star' + suffix_link, '_inline_element' + suffix_delimiter + suffix_link]);
                 conflicts.push(['_emphasis_star' + suffix_link, '_strong_emphasis_star' + suffix_link, '_inline_element' + suffix_delimiter + suffix_link]);
             }
-            if (delimiter == 'star' || delimiter == 'underscore') {
+            // The `_no_link` variants of this conflict are not needed, tree-sitter warns about them.
+            if (link && (delimiter == 'star' || delimiter == 'underscore')) {
                 conflicts.push(['_strong_emphasis_' + delimiter + suffix_link, '_inline_element_no_' + delimiter]);
             }
             if (delimiter !== "underscore") {
