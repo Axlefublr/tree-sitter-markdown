@@ -251,12 +251,18 @@ module.exports = grammar({
         // external scanner not to allow indented chunks when the `$.link_title` of the link
         // reference definition would be valid.
         //
+        // Unlike in the spec, whitespace or a line break is required after the `:`, so that
+        // `[arg]:type` is not a definition but an argument with a type (see the inline grammar).
+        //
         // https://github.github.com/gfm/#link-reference-definitions
         link_reference_definition: $ => prec.dynamic(PRECEDENCE_LEVEL_LINK, seq(
             optional($._whitespace),
             $.link_label,
             ':',
-            optional(seq(optional($._whitespace), optional(seq($._soft_line_break, optional($._whitespace))))),
+            choice(
+                seq($._whitespace, optional(seq($._soft_line_break, optional($._whitespace)))),
+                seq($._soft_line_break, optional($._whitespace)),
+            ),
             $.link_destination,
             optional(prec.dynamic(2 * PRECEDENCE_LEVEL_LINK, seq(
                 choice(

@@ -17,6 +17,11 @@ const PRECEDENCE_LEVEL_HTML = 100;
 // which scores 3 * PRECEDENCE_LEVEL_LINK against a shortcut link plus this, so it has to stay below
 // 2 * PRECEDENCE_LEVEL_LINK.
 const PRECEDENCE_LEVEL_REQUIRED_ARGUMENT = 15;
+// Dynamic precedence of every single token in an argument type. It is counted per token (not once
+// per type) so that the longest possible type always wins: ending the type early would let the rest
+// be parsed as something with its own precedence, like the `<String>` in `<a>:Vec<String>`
+// (a `required_argument`), and that must not outscore the tokens it takes away from the type.
+const PRECEDENCE_LEVEL_ARGUMENT_TYPE = 8;
 
 // Punctuation characters as specified in
 // https://github.github.com/gfm/#ascii-punctuation-character
@@ -77,6 +82,9 @@ module.exports = grammar(add_inline_rules({
     conflicts: $ => [
 
         [$._required_argument, $._text_base],
+        [$._required_argument],
+        [$._shortcut_link_with_type],
+        [$._argument_type],
         [$._html_comment, $._text_base],
 
         [$._link_text_non_empty, $._inline_element],
@@ -255,7 +263,8 @@ module.exports = grammar(add_inline_rules({
         _required_argument: $ => prec.dynamic(PRECEDENCE_LEVEL_REQUIRED_ARGUMENT, seq(
             '<',
             alias($._required_argument_content, $.required_argument),
-            '>'
+            '>',
+            optional($._argument_type)
         )),
         _required_argument_content: $ => seq(
             $._required_argument_start,
@@ -273,6 +282,11 @@ module.exports = grammar(add_inline_rules({
         _required_argument_start: $ => choice(
             $._word,
             common.punctuation_without($, ['<', '>']),
+            $._delimiter_as_text,
+        ),
+        // Opening delimiters that the external scanner may emit instead of plain punctuation.
+        // Anywhere they should be taken as raw text, they have to be listed through this rule.
+        _delimiter_as_text: $ => choice(
             $._emphasis_open_star,
             $._emphasis_open_underscore,
             $._strikethrough_open,
@@ -280,6 +294,22 @@ module.exports = grammar(add_inline_rules({
             $._latex_span_start,
             $._unclosed_span,
         ),
+
+        // The type of an argument: `<arg>:type` and `[arg]:type`. The `:` has to come right after
+        // the `>` or `]`, can't be followed by another `:` or whitespace, and the type goes on
+        // until the next whitespace. Every word (letters and digits) in it is an `argument_type`,
+        // everything else (`<`, `>`, `[`, `]`, `,`, `::`...) is left unnamed. Like the content of
+        // a `required_argument` this is raw: no other inline syntax is parsed inside of it.
+        // That also means it swallows what comes right after it, like the `*` in `*<a>:T*`.
+        _argument_type: $ => seq(
+            ':',
+            argument_type_part($, [':']),
+            repeat(argument_type_part($, [])),
+        ),
+
+        // A `[arg]`, with an optional type. The type is a sibling of `shortcut_link`, not a part of
+        // it, so that the node still covers just the `[arg]`.
+        _shortcut_link_with_type: $ => seq($.shortcut_link, optional($._argument_type)),
 
         // Raw html. Only html comments are supported, everything else in angle brackets is a
         // required argument (see above). As with html blocks we do not emit additional information
@@ -375,6 +405,15 @@ module.exports = grammar(add_inline_rules({
     },
 }));
 
+// One token of an argument type, see `_argument_type`. `excluded` is the punctuation not allowed.
+function argument_type_part($, excluded) {
+    return prec.dynamic(PRECEDENCE_LEVEL_ARGUMENT_TYPE, choice(
+        alias($._word, $.argument_type),
+        common.punctuation_without($, excluded),
+        $._delimiter_as_text,
+    ));
+}
+
 // This function adds some extra inline rules. This is done to reduce code duplication, as some
 // rules may not contain newlines, characters like '*' and '_', ... depending on the context.
 //
@@ -408,7 +447,7 @@ function add_inline_rules(grammar) {
                 }
                 if (link) {
                     elements = elements.concat([
-                        $.shortcut_link,
+                        $._shortcut_link_with_type,
                         $.full_reference_link,
                         $.collapsed_reference_link,
                         $.inline_link,
