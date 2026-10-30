@@ -26,6 +26,9 @@ const PRECEDENCE_LEVEL_ARGUMENT_TYPE = 8;
 // Punctuation characters as specified in
 // https://github.github.com/gfm/#ascii-punctuation-character
 const PUNCTUATION_CHARACTERS_REGEX = '!-/:-@\\[-`\\{-~';
+// Characters that can't be a part of a `_word_no_digit`. The semantic operators are in there so that
+// they always form their own token, even when they touch a word: `String\u21c9`, `foo\u21c8bar`.
+const NON_WORD_CHARACTERS = PUNCTUATION_CHARACTERS_REGEX + ' \\t\\n\\r0-9' + common.SEMANTIC_OPERATORS;
 
 
 // !!!
@@ -86,6 +89,7 @@ module.exports = grammar(add_inline_rules({
         [$._shortcut_link_with_type],
         [$._argument_type],
         [$._html_comment, $._text_base],
+        [$._html_comment, $._text_base_raw],
 
         [$._link_text_non_empty, $._inline_element],
         [$._link_text_non_empty, $._inline_element_no_star],
@@ -130,13 +134,13 @@ module.exports = grammar(add_inline_rules({
 
         code_span: $ => seq(
             alias($._code_span_start, $.code_span_delimiter),
-            repeat(choice($._text_base, '[', ']', $._soft_line_break, $._html_tag)),
+            repeat(choice($._text_base_raw, '[', ']', $._soft_line_break, $._html_tag)),
             alias($._code_span_close, $.code_span_delimiter)
         ),
 
         latex_block: $ => seq(
             alias($._latex_span_start, $.latex_span_delimiter),
-            repeat(choice($._text_base, '[', ']', $._soft_line_break, $._html_tag, $.backslash_escape)),
+            repeat(choice($._text_base_raw, '[', ']', $._soft_line_break, $._html_tag, $.backslash_escape)),
             alias($._latex_span_close, $.latex_span_delimiter),
         ),
 
@@ -298,7 +302,8 @@ module.exports = grammar(add_inline_rules({
         // The type of an argument: `<arg>:type` and `[arg]:type`. The `:` has to come right after
         // the `>` or `]`, can't be followed by another `:` or whitespace, and the type goes on
         // until the next whitespace. Every word (letters and digits) in it is an `argument_type`,
-        // everything else (`<`, `>`, `[`, `]`, `,`, `::`...) is left unnamed. Like the content of
+        // everything else (`<`, `>`, `[`, `]`, `,`, `::`...) is left unnamed, except for runs of
+        // semantic operators, which are `semantic_operator` nodes. Like the content of
         // a `required_argument` this is raw: no other inline syntax is parsed inside of it.
         // That also means it swallows what comes right after it, like the `*` in `*<a>:T*`.
         _argument_type: $ => seq(
@@ -364,8 +369,16 @@ module.exports = grammar(add_inline_rules({
         // (handled by `common.punctuation_without`) and strings of any other characters. This way the
         // lexer does not have to many different states, which makes it a lot easier to make
         // conflicts work.
-        _word: $ => choice($._word_no_digit, $._digits),
-        _word_no_digit: $ => new RegExp('[^' + PUNCTUATION_CHARACTERS_REGEX + ' \\t\\n\\r0-9]+(_+[^' + PUNCTUATION_CHARACTERS_REGEX + ' \\t\\n\\r0-9]+)*'),
+        //
+        // `_word` is what raw contexts (code spans, link destinations, `required_argument`...) use:
+        // it also accepts semantic operators, just without making them a node. Contexts that show
+        // them as a `semantic_operator` use `_word_text` plus `_semantic_operator` separately, see
+        // `_text_base`, which has to be kept apart from `_text_base_raw` for that reason.
+        _word: $ => choice($._word_text, $._semantic_operator),
+        _word_text: $ => choice($._word_no_digit, $._digits),
+        _word_no_digit: $ => new RegExp('[^' + NON_WORD_CHARACTERS + ']+(_+[^' + NON_WORD_CHARACTERS + ']+)*'),
+        // A run of semantic operators (see `common.SEMANTIC_OPERATORS`), one token for the whole run.
+        _semantic_operator: $ => new RegExp('[' + common.SEMANTIC_OPERATORS + ']+'),
         _digits: $ => /[0-9][0-9_]*/,
         _soft_line_break: $ => seq($._newline_token, optional($._last_token_whitespace)),
 
@@ -385,14 +398,23 @@ module.exports = grammar(add_inline_rules({
             common.EXTENSION_TAGS ? $.tag : choice(),
             $._unclosed_span,
         ))),
+        // Plain text, where a run of semantic operators is a `semantic_operator` node.
         _text_base: $ => choice(
+            $._word_text,
+            alias($._semantic_operator, $.semantic_operator),
+            common.punctuation_without($, ['[', ']']),
+            $._whitespace,
+            '<!--',
+        ),
+        // Plain text as it is in raw contexts like code spans: no `semantic_operator` nodes.
+        _text_base_raw: $ => choice(
             $._word,
             common.punctuation_without($, ['[', ']']),
             $._whitespace,
             '<!--',
         ),
         _text_inline_no_link: $ => choice(
-            $._text_base,
+            $._text_base_raw,
             $._emphasis_open_star,
             $._emphasis_open_underscore,
             $._unclosed_span,
@@ -408,7 +430,8 @@ module.exports = grammar(add_inline_rules({
 // One token of an argument type, see `_argument_type`. `excluded` is the punctuation not allowed.
 function argument_type_part($, excluded) {
     return prec.dynamic(PRECEDENCE_LEVEL_ARGUMENT_TYPE, choice(
-        alias($._word, $.argument_type),
+        alias($._word_text, $.argument_type),
+        alias($._semantic_operator, $.semantic_operator),
         common.punctuation_without($, excluded),
         $._delimiter_as_text,
     ));

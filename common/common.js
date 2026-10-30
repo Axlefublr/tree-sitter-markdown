@@ -17,6 +17,12 @@ const PUNCTUATION_CHARACTERS_ARRAY = [
     '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~'
 ];
 
+// Characters that become a `semantic_operator` node in the inline grammar (a run of them is one
+// node). This is the one place to add or remove them: the string is used as the inside of a regex
+// character class, so list them back to back. Run `tree-sitter generate` in
+// `tree-sitter-markdown-inline` afterwards.
+module.exports.SEMANTIC_OPERATORS = '\u21c7\u21ca\u21c8\u21c9\u296f\u21cc';
+
 const PRECEDENCE_LEVEL_LINK = 10;
 
 module.exports.PRECEDENCE_LEVEL_LINK = PRECEDENCE_LEVEL_LINK;
