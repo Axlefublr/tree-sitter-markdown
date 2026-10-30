@@ -108,6 +108,10 @@
           "named": true
         },
         {
+          "type": "semantic_operator",
+          "named": true
+        },
+        {
           "type": "shortcut_link",
           "named": true
         },
@@ -247,6 +251,10 @@
           "named": true
         },
         {
+          "type": "semantic_operator",
+          "named": true
+        },
+        {
           "type": "shortcut_link",
           "named": true
         },
@@ -328,6 +336,10 @@
         },
         {
           "type": "required_argument",
+          "named": true
+        },
+        {
+          "type": "semantic_operator",
           "named": true
         },
         {
@@ -490,6 +502,10 @@
           "named": true
         },
         {
+          "type": "semantic_operator",
+          "named": true
+        },
+        {
           "type": "strikethrough",
           "named": true
         },
@@ -616,6 +632,10 @@
           "named": true
         },
         {
+          "type": "semantic_operator",
+          "named": true
+        },
+        {
           "type": "shortcut_link",
           "named": true
         },
@@ -700,6 +720,10 @@
         },
         {
           "type": "required_argument",
+          "named": true
+        },
+        {
+          "type": "semantic_operator",
           "named": true
         },
         {
@@ -859,6 +883,10 @@
   },
   {
     "type": "numeric_character_reference",
+    "named": true
+  },
+  {
+    "type": "semantic_operator",
     "named": true
   },
   {
