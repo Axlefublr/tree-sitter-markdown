@@ -71,7 +71,13 @@ module.exports = grammar(add_inline_rules({
 
         // Token emmited when encountering opening delimiters for a leaf span
         // e.g. a code span, that does not have a matching closing span
-        $._unclosed_span
+        $._unclosed_span,
+
+        // The `\u21c9` (see `_arrow_argument`) when it starts an argument type, and the empty token
+        // that ends that type. Whether it is one is decided by the external scanner, because that
+        // needs to look ahead to the end of the word.
+        $._arrow_open,
+        $._arrow_type_end
     ],
     precedences: $ => [
         // [$._strong_emphasis_star, $._inline_element_no_star],
@@ -312,6 +318,22 @@ module.exports = grammar(add_inline_rules({
             repeat(argument_type_part($, [])),
         ),
 
+        // An argument type after a `\u21c9`: `\u21c9 type`. The `\u21c9` has to be at the start of a line
+        // or after whitespace, and be followed by exactly one space and then a word. That word is the
+        // type if it is the last thing on the line, or is followed by at least two spaces (a single
+        // trailing space before the end of the line is fine too). In `\u21c9 a b` or `x\u21c9 a` there
+        // is no type. The external scanner decides all of that when it emits `_arrow_open`, which is
+        // the `\u21c9` itself. After that the type is raw, like in `_argument_type`: every word in it
+        // is an `argument_type`, everything else is left unnamed (runs of semantic operators aside),
+        // and it also swallows what comes right after it. The external scanner emits the empty
+        // `_arrow_type_end` at the whitespace or end of the line where the type ends.
+        _arrow_argument: $ => seq(
+            alias($._arrow_open, $.semantic_operator),
+            $._whitespace,
+            repeat1(argument_type_part($, [])),
+            $._arrow_type_end,
+        ),
+
         // A `[arg]`, with an optional type. The type is a sibling of `shortcut_link`, not a part of
         // it, so that the node still covers just the `[arg]`.
         _shortcut_link_with_type: $ => seq($.shortcut_link, optional($._argument_type)),
@@ -394,6 +416,7 @@ module.exports = grammar(add_inline_rules({
             $.code_span,
             alias($._html_tag, $.html_tag),
             $._required_argument,
+            $._arrow_argument,
             $._text_base,
             common.EXTENSION_TAGS ? $.tag : choice(),
             $._unclosed_span,

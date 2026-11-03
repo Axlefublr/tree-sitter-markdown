@@ -22,13 +22,25 @@ typedef enum {
     STRIKETHROUGH_CLOSE,
     LATEX_SPAN_START,
     LATEX_SPAN_CLOSE,
-    UNCLOSED_SPAN
+    UNCLOSED_SPAN,
+    ARROW_OPEN,
+    ARROW_TYPE_END
 } TokenType;
 
 // Determines if a character is punctuation as defined by the markdown spec.
 static bool is_punctuation(int32_t chr) {
     return (chr >= '!' && chr <= '/') || (chr >= ':' && chr <= '@') ||
            (chr >= '[' && chr <= '`') || (chr >= '{' && chr <= '~');
+}
+
+// The semantic operator U+21C9 that makes the word after it an argument
+// type. This is the only place that knows about it besides `_arrow_argument` in
+// grammar.js: it is not derived from `SEMANTIC_OPERATORS` in common.js.
+#define ARROW 0x21C9
+
+static bool is_newline_or_eof(TSLexer *lexer) {
+    return lexer->lookahead == '\n' || lexer->lookahead == '\r' ||
+           lexer->eof(lexer);
 }
 
 // State bitflags used with `Scanner.state`
@@ -337,6 +349,47 @@ static bool parse_underscore(Scanner *s, TSLexer *lexer,
     return false;
 }
 
+// Decides whether a U+21C9 starts an argument type, see `_arrow_argument` in
+// grammar.js. All of these have to be true:
+// 1. it is at the start of a line or right after whitespace (the grammar tells
+//    us through `LAST_TOKEN_WHITESPACE`), and not part of a longer run of
+//    semantic operators,
+// 2. it is followed by exactly one space,
+// 3. then comes a word (no whitespace in it),
+// 4. and the word ends the line, or is followed by at least two spaces. A
+//    single trailing space before the end of the line is fine too.
+// Only the U+21C9 itself is part of the token, the rest is just looked at.
+static bool parse_arrow(TSLexer *lexer, const bool *valid_symbols) {
+    if (!valid_symbols[ARROW_OPEN] || !valid_symbols[LAST_TOKEN_WHITESPACE]) {
+        return false;
+    }
+    lexer->advance(lexer, false);
+    lexer->mark_end(lexer);
+    if (lexer->lookahead != ' ') {
+        return false;
+    }
+    lexer->advance(lexer, false);
+    bool has_word = false;
+    while (lexer->lookahead != ' ' && lexer->lookahead != '\t' &&
+           !is_newline_or_eof(lexer)) {
+        lexer->advance(lexer, false);
+        has_word = true;
+    }
+    if (!has_word) {
+        return false;
+    }
+    uint32_t spaces = 0;
+    while (lexer->lookahead == ' ') {
+        lexer->advance(lexer, false);
+        spaces++;
+    }
+    if (spaces < 2 && !is_newline_or_eof(lexer)) {
+        return false;
+    }
+    lexer->result_symbol = ARROW_OPEN;
+    return true;
+}
+
 static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
     // A normal tree-sitter rule decided that the current branch is invalid and
     // now "requests" an error to stop the branch
@@ -344,9 +397,21 @@ static bool scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
         return error(lexer);
     }
 
+    // The end of an argument type after a U+21C9: the first whitespace or the
+    // end of the line. This token is empty. The start already made sure that
+    // the type ends like this, see `parse_arrow`.
+    if (valid_symbols[ARROW_TYPE_END] &&
+        (lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
+         is_newline_or_eof(lexer))) {
+        lexer->result_symbol = ARROW_TYPE_END;
+        return true;
+    }
+
     // Decide which tokens to consider based on the first non-whitespace
     // character
     switch (lexer->lookahead) {
+        case ARROW:
+            return parse_arrow(lexer, valid_symbols);
         case '`':
             // A backtick could mark the beginning or ending of a code span or a
             // fenced code block.
