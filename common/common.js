@@ -22,6 +22,10 @@ const PUNCTUATION_CHARACTERS_ARRAY = [
 // character class, so list them back to back. Run `tree-sitter generate` in
 // `tree-sitter-markdown-inline` afterwards.
 module.exports.SEMANTIC_OPERATORS = '\u21c7\u21ca\u21c8\u21c9\u296f\u21cc';
+// The subset of `SEMANTIC_OPERATORS` that is followed by an `argument_type` in the inline grammar:
+// the `string` in `\u21c9string`, up to the next whitespace. The characters have to be listed in
+// `SEMANTIC_OPERATORS` too. Can be empty to turn this off.
+module.exports.TYPED_SEMANTIC_OPERATORS = '\u21c9';
 
 const PRECEDENCE_LEVEL_LINK = 10;
 

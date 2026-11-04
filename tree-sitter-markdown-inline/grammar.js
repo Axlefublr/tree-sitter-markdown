@@ -29,6 +29,11 @@ const PUNCTUATION_CHARACTERS_REGEX = '!-/:-@\\[-`\\{-~';
 // Characters that can't be a part of a `_word_no_digit`. The semantic operators are in there so that
 // they always form their own token, even when they touch a word: `String\u21c9`, `foo\u21c8bar`.
 const NON_WORD_CHARACTERS = PUNCTUATION_CHARACTERS_REGEX + ' \\t\\n\\r0-9' + common.SEMANTIC_OPERATORS;
+// A run of semantic operators is either typed (an `argument_type` can follow it, see
+// `_operator_with_type`) or plain, depending on the operator it ends with. These are the operators
+// a run can end with in each case.
+const TYPED_OPERATORS = common.TYPED_SEMANTIC_OPERATORS;
+const PLAIN_OPERATORS = [...common.SEMANTIC_OPERATORS].filter(c => !TYPED_OPERATORS.includes(c)).join('');
 
 
 // !!!
@@ -88,6 +93,7 @@ module.exports = grammar(add_inline_rules({
         [$._required_argument],
         [$._shortcut_link_with_type],
         [$._argument_type],
+        [$._operator_with_type],
         [$._html_comment, $._text_base],
         [$._html_comment, $._text_base_raw],
 
@@ -312,6 +318,20 @@ module.exports = grammar(add_inline_rules({
             repeat(argument_type_part($, [])),
         ),
 
+        // The type that follows a typed semantic operator (see `common.TYPED_SEMANTIC_OPERATORS`):
+        // `\u21c9string`. Made of the same tokens as `_argument_type`, and just like there it goes on
+        // until the next whitespace and is raw. Unlike there nothing is consumed before it, so what
+        // comes right after the operator can be anything but whitespace, even a `:`.
+        _operator_type: $ => repeat1(argument_type_part($, [])),
+
+        // A typed semantic operator with its optional type. The type is a sibling of the
+        // `semantic_operator`, like for `required_argument` and `shortcut_link`. In a raw context
+        // (like a code span) the operator is just a part of `_word`, and there is no type.
+        _operator_with_type: $ => seq(
+            alias($._semantic_operator_typed, $.semantic_operator),
+            optional($._operator_type),
+        ),
+
         // A `[arg]`, with an optional type. The type is a sibling of `shortcut_link`, not a part of
         // it, so that the node still covers just the `[arg]`.
         _shortcut_link_with_type: $ => seq($.shortcut_link, optional($._argument_type)),
@@ -372,13 +392,18 @@ module.exports = grammar(add_inline_rules({
         //
         // `_word` is what raw contexts (code spans, link destinations, `required_argument`...) use:
         // it also accepts semantic operators, just without making them a node. Contexts that show
-        // them as a `semantic_operator` use `_word_text` plus `_semantic_operator` separately, see
+        // them as a `semantic_operator` use `_word_text` plus the operator tokens separately, see
         // `_text_base`, which has to be kept apart from `_text_base_raw` for that reason.
-        _word: $ => choice($._word_text, $._semantic_operator),
+        _word: $ => choice($._word_text, $._semantic_operator_plain, $._semantic_operator_typed),
         _word_text: $ => choice($._word_no_digit, $._digits),
         _word_no_digit: $ => new RegExp('[^' + NON_WORD_CHARACTERS + ']+(_+[^' + NON_WORD_CHARACTERS + ']+)*'),
         // A run of semantic operators (see `common.SEMANTIC_OPERATORS`), one token for the whole run.
-        _semantic_operator: $ => new RegExp('[' + common.SEMANTIC_OPERATORS + ']+'),
+        // It is split in two kinds of tokens by the operator it ends with, so that a run that ends
+        // with a typed operator (see `common.TYPED_SEMANTIC_OPERATORS`) can be told apart. The longest
+        // match always wins, so a run never gets split: the two can't match the same length, as
+        // what they end with differs.
+        _semantic_operator_plain: $ => operator_run(PLAIN_OPERATORS),
+        _semantic_operator_typed: $ => operator_run(TYPED_OPERATORS),
         _digits: $ => /[0-9][0-9_]*/,
         _soft_line_break: $ => seq($._newline_token, optional($._last_token_whitespace)),
 
@@ -394,14 +419,16 @@ module.exports = grammar(add_inline_rules({
             $.code_span,
             alias($._html_tag, $.html_tag),
             $._required_argument,
+            $._operator_with_type,
             $._text_base,
             common.EXTENSION_TAGS ? $.tag : choice(),
             $._unclosed_span,
         ))),
-        // Plain text, where a run of semantic operators is a `semantic_operator` node.
+        // Plain text, where a run of semantic operators is a `semantic_operator` node. A typed one is
+        // not here, but in `_inline_base` (as `_operator_with_type`), as it can be followed by a type.
         _text_base: $ => choice(
             $._word_text,
-            alias($._semantic_operator, $.semantic_operator),
+            alias($._semantic_operator_plain, $.semantic_operator),
             common.punctuation_without($, ['[', ']']),
             $._whitespace,
             '<!--',
@@ -427,11 +454,17 @@ module.exports = grammar(add_inline_rules({
     },
 }));
 
+// A run of semantic operators that ends with one of `last`. Never matches when `last` is empty.
+function operator_run(last) {
+    return last ? new RegExp('[' + common.SEMANTIC_OPERATORS + ']*[' + last + ']') : choice();
+}
+
 // One token of an argument type, see `_argument_type`. `excluded` is the punctuation not allowed.
 function argument_type_part($, excluded) {
     return prec.dynamic(PRECEDENCE_LEVEL_ARGUMENT_TYPE, choice(
         alias($._word_text, $.argument_type),
-        alias($._semantic_operator, $.semantic_operator),
+        alias($._semantic_operator_plain, $.semantic_operator),
+        alias($._semantic_operator_typed, $.semantic_operator),
         common.punctuation_without($, excluded),
         $._delimiter_as_text,
     ));

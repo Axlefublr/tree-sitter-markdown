@@ -2814,7 +2814,16 @@
                 "type": "ALIAS",
                 "content": {
                   "type": "SYMBOL",
-                  "name": "_semantic_operator"
+                  "name": "_semantic_operator_plain"
+                },
+                "named": true,
+                "value": "semantic_operator"
+              },
+              {
+                "type": "ALIAS",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "_semantic_operator_typed"
                 },
                 "named": true,
                 "value": "semantic_operator"
@@ -2993,7 +3002,16 @@
                   "type": "ALIAS",
                   "content": {
                     "type": "SYMBOL",
-                    "name": "_semantic_operator"
+                    "name": "_semantic_operator_plain"
+                  },
+                  "named": true,
+                  "value": "semantic_operator"
+                },
+                {
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_semantic_operator_typed"
                   },
                   "named": true,
                   "value": "semantic_operator"
@@ -3155,6 +3173,225 @@
               ]
             }
           }
+        }
+      ]
+    },
+    "_operator_type": {
+      "type": "REPEAT1",
+      "content": {
+        "type": "PREC_DYNAMIC",
+        "value": 8,
+        "content": {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_word_text"
+              },
+              "named": true,
+              "value": "argument_type"
+            },
+            {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_semantic_operator_plain"
+              },
+              "named": true,
+              "value": "semantic_operator"
+            },
+            {
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_semantic_operator_typed"
+              },
+              "named": true,
+              "value": "semantic_operator"
+            },
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "STRING",
+                      "value": "!"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "\""
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "#"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "$"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "%"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "&"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "'"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "("
+                    },
+                    {
+                      "type": "STRING",
+                      "value": ")"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "*"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "+"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": ","
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "-"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "."
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "/"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": ":"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": ";"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "<"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "="
+                    },
+                    {
+                      "type": "STRING",
+                      "value": ">"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "?"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "@"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "["
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "\\"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "]"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "^"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "_"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "`"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "{"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "|"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "}"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "~"
+                    }
+                  ]
+                },
+                {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "_last_token_punctuation"
+                    },
+                    {
+                      "type": "BLANK"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "SYMBOL",
+              "name": "_delimiter_as_text"
+            }
+          ]
+        }
+      }
+    },
+    "_operator_with_type": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_semantic_operator_typed"
+          },
+          "named": true,
+          "value": "semantic_operator"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_operator_type"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
         }
       ]
     },
@@ -4097,7 +4334,11 @@
         },
         {
           "type": "SYMBOL",
-          "name": "_semantic_operator"
+          "name": "_semantic_operator_plain"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_semantic_operator_typed"
         }
       ]
     },
@@ -4118,9 +4359,13 @@
       "type": "PATTERN",
       "value": "[^!-/:-@\\[-`\\{-~ \\t\\n\\r0-9⇇⇊⇈⇉⥯⇌]+(_+[^!-/:-@\\[-`\\{-~ \\t\\n\\r0-9⇇⇊⇈⇉⥯⇌]+)*"
     },
-    "_semantic_operator": {
+    "_semantic_operator_plain": {
       "type": "PATTERN",
-      "value": "[⇇⇊⇈⇉⥯⇌]+"
+      "value": "[⇇⇊⇈⇉⥯⇌]*[⇇⇊⇈⥯⇌]"
+    },
+    "_semantic_operator_typed": {
+      "type": "PATTERN",
+      "value": "[⇇⇊⇈⇉⥯⇌]*[⇉]"
     },
     "_digits": {
       "type": "PATTERN",
@@ -4206,6 +4451,10 @@
             },
             {
               "type": "SYMBOL",
+              "name": "_operator_with_type"
+            },
+            {
+              "type": "SYMBOL",
               "name": "_text_base"
             },
             {
@@ -4231,7 +4480,7 @@
           "type": "ALIAS",
           "content": {
             "type": "SYMBOL",
-            "name": "_semantic_operator"
+            "name": "_semantic_operator_plain"
           },
           "named": true,
           "value": "semantic_operator"
@@ -5709,6 +5958,9 @@
     ],
     [
       "_argument_type"
+    ],
+    [
+      "_operator_with_type"
     ],
     [
       "_html_comment",
